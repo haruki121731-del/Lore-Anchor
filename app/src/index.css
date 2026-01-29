@@ -1,0 +1,337 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Inter+Tight:wght@700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* 鉄の掟4: 色の「くすみ」と「濁り」- オフホワイト背景 */
+    --background: 40 20% 95%;
+    --foreground: 40 10% 10%;
+    --card: 40 20% 95%;
+    --card-foreground: 40 10% 10%;
+    --popover: 40 20% 95%;
+    --popover-foreground: 40 10% 10%;
+    --primary: 40 10% 10%;
+    --primary-foreground: 40 20% 95%;
+    --secondary: 40 15% 90%;
+    --secondary-foreground: 40 10% 10%;
+    --muted: 40 15% 90%;
+    --muted-foreground: 40 8% 40%;
+    --accent: 7 50% 48%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 7 50% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 10% 10%;
+    --input: 40 15% 85%;
+    --ring: 40 10% 10%;
+    --radius: 0px;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-paper text-ink font-body antialiased;
+    font-feature-settings: "kern" 1, "liga" 1;
+  }
+  
+  /* 鉄の掟3: 見出しの窒息密度 */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-black tracking-tighter leading-tight;
+  }
+  
+  h1 {
+    @apply text-5xl md:text-6xl;
+  }
+  
+  h2 {
+    @apply text-4xl md:text-5xl;
+  }
+  
+  h3 {
+    @apply text-3xl md:text-4xl;
+  }
+  
+  /* コード・URL用モノフォント */
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    @apply text-sm;
+  }
+}
+
+@layer components {
+  /* 鉄の掟2: ノイズテクスチャ */
+  .noise {
+    position: relative;
+  }
+  
+  .noise::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.04;
+    pointer-events: none;
+    z-index: 1;
+  }
+  
+  .noise-dark::before {
+    opacity: 0.08;
+  }
+  
+  /* 鉄の掟1: ソリッドシャドウ */
+  .shadow-solid {
+    box-shadow: 8px 8px 0 0 #1A1916;
+  }
+  
+  .shadow-solid-sm {
+    box-shadow: 4px 4px 0 0 #1A1916;
+  }
+  
+  .shadow-solid-lg {
+    box-shadow: 12px 12px 0 0 #1A1916;
+  }
+  
+  .shadow-solid-terracotta {
+    box-shadow: 8px 8px 0 0 #B54A3F;
+  }
+  
+  /* ホバー時のシャドウ拡大 */
+  .hover-lift {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 12px 12px 0 0 #1A1916;
+  }
+  
+  /* 鉄の掟2: メッシュグラデーション */
+  .mesh-gradient {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .mesh-gradient::before,
+  .mesh-gradient::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.4;
+    animation: mesh-blob 20s ease-in-out infinite;
+  }
+  
+  .mesh-gradient::before {
+    width: 400px;
+    height: 400px;
+    background: #C9A227;
+    top: -100px;
+    left: -100px;
+    animation-delay: 0s;
+  }
+  
+  .mesh-gradient::after {
+    width: 300px;
+    height: 300px;
+    background: #B54A3F;
+    bottom: -50px;
+    right: -50px;
+    animation-delay: -10s;
+  }
+  
+  /* ボタンスタイル */
+  .btn-primary {
+    @apply bg-ink text-paper px-8 py-4 font-bold tracking-tight transition-all duration-200;
+  }
+  
+  .btn-primary:hover {
+    @apply bg-ink-faded;
+    transform: translateY(-2px);
+    box-shadow: 6px 6px 0 0 #1A1916;
+  }
+  
+  .btn-secondary {
+    @apply bg-transparent border-2 border-ink text-ink px-8 py-4 font-bold tracking-tight transition-all duration-200;
+  }
+  
+  .btn-secondary:hover {
+    @apply bg-ink text-paper;
+  }
+  
+  .btn-accent {
+    @apply bg-terracotta text-white px-8 py-4 font-bold tracking-tight transition-all duration-200;
+  }
+  
+  .btn-accent:hover {
+    @apply bg-terracotta/90;
+    transform: translateY(-2px);
+    box-shadow: 6px 6px 0 0 #B54A3F;
+  }
+  
+  /* カードスタイル */
+  .card {
+    @apply bg-paper border-2 border-ink relative;
+  }
+  
+  .card-infringed {
+    @apply border-terracotta border-4;
+    box-shadow: 0 0 0 4px rgba(181, 74, 63, 0.2);
+  }
+  
+  /* バッジスタイル */
+  .badge-safe {
+    @apply bg-forest/10 text-forest border border-forest rounded-full px-3 py-1 text-xs font-medium;
+  }
+  
+  .badge-infringed {
+    @apply bg-terracotta text-white rounded-full px-3 py-1 text-xs font-bold;
+  }
+  
+  .badge-scanning {
+    @apply bg-ink-pale/10 text-ink-faded border border-ink-pale rounded-full px-3 py-1 text-xs font-medium;
+  }
+  
+  .badge-pro {
+    @apply bg-acid text-white rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest;
+  }
+  
+  /* アップロードゾーン */
+  .upload-zone {
+    @apply border-2 border-dashed border-ink-pale bg-paper-aged/50 transition-all duration-300;
+  }
+  
+  .upload-zone:hover,
+  .upload-zone.dragover {
+    @apply border-ink bg-paper;
+    box-shadow: 8px 8px 0 0 #1A1916;
+  }
+  
+  /* アコーディオン */
+  .accordion-item {
+    @apply border-b-2 border-ink;
+  }
+  
+  .accordion-trigger {
+    @apply py-6 font-bold tracking-tight flex justify-between items-center w-full text-left transition-all duration-200;
+  }
+  
+  .accordion-trigger:hover {
+    @apply text-ink-faded;
+  }
+  
+  /* ステータスアイコン */
+  .status-icon {
+    @apply w-5 h-5 flex items-center justify-center;
+  }
+  
+  /* レーダーアニメーション */
+  .radar-ping {
+    @apply relative;
+  }
+  
+  .radar-ping::before {
+    content: '';
+    @apply absolute inset-0 rounded-full bg-current;
+    animation: radar-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+  
+  /* スピナー */
+  .spinner {
+    @apply w-5 h-5 border-2 border-current border-t-transparent rounded-full;
+    animation: spin-slow 1s linear infinite;
+  }
+  
+  /* スクロールバー */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-paper-aged;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-ink;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ink-faded;
+  }
+  
+  /* 選択テキスト */
+  ::selection {
+    @apply bg-terracotta/30 text-ink;
+  }
+}
+
+@layer utilities {
+  /* 鉄の掟5: グリッドの破壊 - 非対称レイアウト */
+  .asymmetric-left {
+    @apply w-[55%];
+  }
+  
+  .asymmetric-right {
+    @apply w-[45%];
+  }
+  
+  .offset-up {
+    transform: translateY(-24px);
+  }
+  
+  .offset-down {
+    transform: translateY(24px);
+  }
+  
+  .offset-left {
+    transform: translateX(-16px);
+  }
+  
+  .offset-right {
+    transform: translateX(16px);
+  }
+  
+  /* テキストジャンプ率 */
+  .text-jump {
+    @apply text-6xl font-black tracking-tighter leading-tight;
+  }
+  
+  /* ギリギリサイズ */
+  .text-micro {
+    @apply text-[10px] font-medium uppercase tracking-widest;
+  }
+  
+  /* インクの滲み効果 */
+  .ink-bleed {
+    text-shadow: 1px 1px 0 rgba(26, 25, 22, 0.1);
+  }
+  
+  /* コンテナ */
+  .container-custom {
+    @apply max-w-7xl mx-auto px-6 md:px-8;
+  }
+  
+  /* セクションパディング */
+  .section-lg {
+    @apply py-32;
+  }
+  
+  .section-md {
+    @apply py-24;
+  }
+  
+  .section-sm {
+    @apply py-16;
+  }
+}
