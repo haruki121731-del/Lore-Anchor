@@ -18,7 +18,6 @@ if any(keyword in COMMIT_MESSAGE.lower() for keyword in IGNORE_KEYWORDS) or len(
 # --- AIペルソナ ---
 SYSTEM_PROMPT = """
 あなたは「Lore-Anchor」を開発する19歳のエンジニアだ。
-クリエイターの権利を守るため、寝食を忘れてコードを書いている。
 コミットメッセージを元に、X（Twitter）への投稿案を3つ作成せよ。
 
 【制約】
@@ -39,9 +38,9 @@ try:
         "anthropic-version": "2023-06-01",
         "content-type": "application/json"
     }
-    # ★ ここを修正しました（最新モデルIDに変更）
+    # ★ ここを修正しました（最も安定しているHaikuモデルに変更）
     data = {
-        "model": "claude-3-5-sonnet-20241022", 
+        "model": "claude-3-haiku-20240307", 
         "max_tokens": 500,
         "system": SYSTEM_PROMPT,
         "messages": [{"role": "user", "content": f"作業内容: {COMMIT_MESSAGE}"}]
