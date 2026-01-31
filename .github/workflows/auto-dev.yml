@@ -1,8 +1,9 @@
-name: Auto Dev AI
+name: AI Auto Developer
 
 on:
   issues:
     types: [opened, reopened, labeled]
+  workflow_dispatch:  # 👈 これで手動実行ボタンが出現します
 
 permissions:
   contents: write
@@ -10,43 +11,59 @@ permissions:
   issues: write
 
 jobs:
-  ai-coding:
+  auto-code:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.10'
 
       - name: Install dependencies
         run: |
           pip install -r .github/scripts/requirements.txt
 
-      - name: Run AI Coder
+      - name: Create Branch
+        env:
+          ISSUE_NUM: ${{ github.event.issue.number || 'manual' }}
+        run: |
+          git config --global user.name "AI-Auto-Dev"
+          git config --global user.email "actions@github.com"
+          # 手動実行時はタイムスタンプでユニーク化
+          BRANCH_NAME="feature/issue-${ISSUE_NUM}-auto-dev-$(date +%s)"
+          git checkout -b $BRANCH_NAME
+          echo "HEAD_BRANCH=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Run AI Agent
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO_NAME: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || '0' }} # 手動時は0
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python .github/scripts/ai_coder.py
+
+      - name: Check for changes
+        id: git-check
         run: |
-          python .github/scripts/ai_coder.py
+          git add .
+          git diff --staged --quiet || echo "changes=true" >> $GITHUB_OUTPUT
+
+      - name: Commit and Push
+        if: steps.git-check.outputs.changes == 'true'
+        run: |
+          git commit -m "🤖 AI Auto-fix"
+          git push origin ${{ env.HEAD_BRANCH }}
 
       - name: Create Pull Request
+        if: steps.git-check.outputs.changes == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUM: ${{ github.event.issue.number || '0' }}
         run: |
-          # 変更がある場合のみPR作成
-          if [[ -n $(git status -s) ]]; then
-            git config --global user.name "github-actions[bot]"
-            git config --global user.email "github-actions[bot]@users.noreply.github.com"
-            git checkout -b feature/ai-fix-${{ github.event.issue.number }}
-            git add .
-            git commit -m "AI Auto Fix for Issue #${{ github.event.issue.number }}"
-            git push origin feature/ai-fix-${{ github.event.issue.number }}
-            gh pr create --title "AI Fix: Issue #${{ github.event.issue.number }}" --body "Automated fix by AI Agent based on Issue #${{ github.event.issue.number }}" --base main --head feature/ai-fix-${{ github.event.issue.number }}
-          else
-            echo "No changes made by AI."
-          fi
+          gh pr create --title "🤖 AI Fix for Issue #${ISSUE_NUM}" \
+                       --body "AIによる自動修正（Discord/手動実行）" \
+                       --head ${{ env.HEAD_BRANCH }} \
+                       --base main
