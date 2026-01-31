@@ -3,7 +3,7 @@ name: AI Auto Developer
 on:
   issues:
     types: [opened, reopened, labeled]
-  workflow_dispatch:  # 👈 これで手動実行ボタンが出現します
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -24,7 +24,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r .github/scripts/requirements.txt
+          pip install openai PyGithub
 
       - name: Create Branch
         env:
@@ -32,7 +32,6 @@ jobs:
         run: |
           git config --global user.name "AI-Auto-Dev"
           git config --global user.email "actions@github.com"
-          # 手動実行時はタイムスタンプでユニーク化
           BRANCH_NAME="feature/issue-${ISSUE_NUM}-auto-dev-$(date +%s)"
           git checkout -b $BRANCH_NAME
           echo "HEAD_BRANCH=$BRANCH_NAME" >> $GITHUB_ENV
@@ -41,7 +40,7 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.issue.number || '0' }} # 手動時は0
+          ISSUE_NUMBER: ${{ github.event.issue.number || '0' }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python .github/scripts/ai_coder.py
 
@@ -64,6 +63,6 @@ jobs:
           ISSUE_NUM: ${{ github.event.issue.number || '0' }}
         run: |
           gh pr create --title "🤖 AI Fix for Issue #${ISSUE_NUM}" \
-                       --body "AIによる自動修正（Discord/手動実行）" \
+                       --body "AIによる自動修正" \
                        --head ${{ env.HEAD_BRANCH }} \
                        --base main
