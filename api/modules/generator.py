@@ -67,7 +67,7 @@ def get_summary_statistics(classified_results: list) -> Dict[str, int]:
         Dictionary with counts of total, safe, and suspicious URLs
     """
     total = len(classified_results)
-    suspicious = sum(1 for r in classified_results if "Suspicious" in r.get('status', ''))
+    suspicious = sum(1 for r in classified_results if r.get('status') == 'suspicious')
     safe = total - suspicious
 
     return {

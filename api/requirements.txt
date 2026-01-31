@@ -4,4 +4,5 @@ python-multipart
 python-dotenv
 requests
 beautifulsoup4
+google-search-results
 # Add other dependencies from original requirements.txt if any, but modules seemed to use standard libs or these.

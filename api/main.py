@@ -7,7 +7,7 @@ import shutil
 from dotenv import load_dotenv
 
 # Import custom modules (ensure modules/ is in path or package structure)
-from modules.search_engine import search_by_image
+from modules.search_engine import reverse_image_search
 from modules.detector import classify_results, get_suspicious_urls
 from modules.generator import generate_takedown_request, get_summary_statistics
 
@@ -57,7 +57,7 @@ async def scan_image(
         key_to_use = api_key if api_key else env_api_key
         
         # Search
-        search_results = search_by_image(temp_filename, key_to_use) # search_by_image likely handles file path or file object depending on implementation. 
+        search_results = reverse_image_search(temp_filename, key_to_use) 
         # Checking app.py: search_by_image(uploaded_file, api_key) where uploaded_file is Streamlit's UploadedFile. 
         # We might need to adjust search_by_image if it expects a specific object, but passing path is safer if modified.
         # However, modules/search_engine.py is likely designed for Streamlit. Let's assume for now it handles what we give or we might need to fix it.

@@ -4,7 +4,7 @@
 React + Vite フロントエンドと FastAPI バックエンドの構成になりました。
 
 ## Directory Structure
-- `app/`: Frontend (React, Vite, TypeScript)
+- `web/`: Frontend (React, Vite, TypeScript)
 - `api/`: Backend (FastAPI, Python)
 
 ## Features
@@ -32,9 +32,9 @@ Create `.env` in `api/` directory with:
 SERPAPI_KEY=your_api_key
 ```
 
-### 2. Frontend (App)
+### 2. Frontend (Web)
 ```bash
-cd app
+cd web
 npm install
 npm run dev
 ```

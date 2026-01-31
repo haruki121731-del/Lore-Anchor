@@ -61,20 +61,33 @@ def classify_results(search_results: List[Dict[str, str]],
         List of results with added 'status' field (Safe or Suspicious)
     """
     classified_results = []
+    import uuid
 
     for result in search_results:
         url = result.get('url', '')
         title = result.get('title', 'No Title')
+        
+        # Parse domain
+        try:
+            parsed_url = urlparse(url)
+            domain = parsed_url.netloc.lower()
+            if domain.startswith('www.'):
+                domain = domain[4:]
+        except:
+            domain = url
 
         if is_whitelisted(url, whitelist_domains):
-            status = "✅ Safe"
+            status = "safe"
         else:
-            status = "⚠️ Suspicious"
+            status = "suspicious"
 
         classified_results.append({
-            'url': url,
+            'id': str(uuid.uuid4()),
             'title': title,
-            'status': status
+            'url': url,
+            'domain': domain,
+            'status': status,
+            'similarity': 90 # Default high confidence for found results as placeholder
         })
 
     return classified_results
@@ -90,4 +103,4 @@ def get_suspicious_urls(classified_results: List[Dict[str, str]]) -> List[Dict[s
     Returns:
         List of suspicious URLs only
     """
-    return [result for result in classified_results if "Suspicious" in result.get('status', '')]
+    return [result for result in classified_results if result.get('status') == 'suspicious']
