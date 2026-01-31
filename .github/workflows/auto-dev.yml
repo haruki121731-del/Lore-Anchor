@@ -1,1 +1,52 @@
+name: Auto Dev AI
 
+on:
+  issues:
+    types: [opened, reopened, labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  ai-coding:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r .github/scripts/requirements.txt
+
+      - name: Run AI Coder
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_NAME: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          python .github/scripts/ai_coder.py
+
+      - name: Create Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 変更がある場合のみPR作成
+          if [[ -n $(git status -s) ]]; then
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            git checkout -b feature/ai-fix-${{ github.event.issue.number }}
+            git add .
+            git commit -m "AI Auto Fix for Issue #${{ github.event.issue.number }}"
+            git push origin feature/ai-fix-${{ github.event.issue.number }}
+            gh pr create --title "AI Fix: Issue #${{ github.event.issue.number }}" --body "Automated fix by AI Agent based on Issue #${{ github.event.issue.number }}" --base main --head feature/ai-fix-${{ github.event.issue.number }}
+          else
+            echo "No changes made by AI."
+          fi
