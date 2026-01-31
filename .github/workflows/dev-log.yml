@@ -1,17 +1,28 @@
 name: Ghostwriter Dev-Log
+
 on:
   push:
     branches: [ "main", "master" ]
+
 jobs:
   generate-draft:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-      - run: pip install requests
-      - env:
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run Ghostwriter Script
+        env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python .github/scripts/generate_tweet.py "${{ github.event.head_commit.message }}"
