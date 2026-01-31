@@ -1,122 +1,85 @@
 import os
 import sys
-import re
-from github import Github
+from github import Github, Auth
 from openai import OpenAI
 
-# Configuration
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-REPO_NAME = os.getenv("REPO_NAME")
-ISSUE_NUMBER = int(os.getenv("ISSUE_NUMBER"))
+def main():
+    # --- 1. 設定の読み込みとチェック ---
+    token = os.getenv("GITHUB_TOKEN")
+    router_key = os.getenv("OPENROUTER_API_KEY")
+    repo_name = os.getenv("GITHUB_REPOSITORY")
+    issue_number = os.getenv("ISSUE_NUMBER")
 
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=OPENROUTER_API_KEY,
-)
+    # 必須変数のチェック（これがエラーの原因でした）
+    if not token:
+        print("❌ Error: GITHUB_TOKEN is missing")
+        sys.exit(1)
+    if not router_key:
+        print("❌ Error: OPENROUTER_API_KEY is missing")
+        sys.exit(1)
+    if not repo_name:
+        print("❌ Error: GITHUB_REPOSITORY is missing")
+        sys.exit(1)
+    
+    print(f"🤖 Starting AI Agent for: {repo_name} (Issue #{issue_number})")
 
-gh = Github(GITHUB_TOKEN)
-repo = gh.get_repo(REPO_NAME)
-issue = repo.get_issue(ISSUE_NUMBER)
+    # --- 2. GitHub接続 (新しいAuth方式) ---
+    auth = Auth.Token(token)
+    gh = Github(auth=auth)
+    repo = gh.get_repo(repo_name)
 
-def get_file_structure():
-    file_paths = []
-    exclude_dirs = {'.git', 'node_modules', '__pycache__', '.github', 'venv', 'env'}
-    for root, dirs, files in os.walk('.'):
-        dirs[:] = [d for d in dirs if d not in exclude_dirs]
-        for file in files:
-            file_paths.append(os.path.join(root, file))
-    return "\n".join(file_paths)
+    # Issueの取得
+    if not issue_number or issue_number == '0':
+        print("⚠️ No issue number provided (Manual run). Exiting.")
+        return
 
-def ai_chat(model, system_prompt, user_prompt):
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ]
-        )
-        return response.choices[0].message.content
+        issue = repo.get_issue(number=int(issue_number))
     except Exception as e:
-        print(f"Error calling AI: {e}", file=sys.stderr)
+        print(f"❌ Error getting issue: {e}")
         sys.exit(1)
 
-# --- Phase 1: Manager ---
-print("Running Phase 1: Complexity Analysis...")
-manager_system = "You are a Lead Engineer. Analyze the issue and determine if the fix is 'simple' (minor text/logic fix) or 'complex' (refactoring, multiple files). Output ONLY 'simple' or 'complex'."
-manager_user = f"Issue Title: {issue.title}\n\nIssue Body: {issue.body}"
+    # --- 3. OpenRouter (AI) 接続 ---
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=router_key,
+    )
 
-difficulty = ai_chat("deepseek/deepseek-chat", manager_system, manager_user).strip().lower()
-if "complex" not in difficulty:
-    difficulty = "simple"
-else:
-    difficulty = "complex"
-
-print(f"Detected Difficulty: {difficulty}")
-
-# --- Phase 2: Worker ---
-print("Running Phase 2: Code Generation...")
-worker_model = "deepseek/deepseek-chat" if difficulty == "simple" else "anthropic/claude-3.5-sonnet"
-file_structure = get_file_structure()
-
-worker_system = """You are an expert AI Developer.
-Based on the file structure and issue description, generate the code to fix the issue.
-Return the full content of the file(s) to be created or modified.
-
-Format your response EXACTLY as follows for each file:
-
-FILENAME: path/to/file.ext
-```
-<complete file content>
-```
-
-Do not include any other text or markdown explanations. Existing files will be overwritten."""
-
-worker_user = f"""
-Current File Structure:
-{file_structure}
-
-Issue Title: {issue.title}
-Issue Description: {issue.body}
-
-Please generate the required code changes.
-"""
-
-response = ai_chat(worker_model, worker_system, worker_user)
-
-# Parse and Apply
-modified_files = []
-# Regex to find FILENAME: ... followed by a code block
-pattern = r"FILENAME:\s*(.+?)\s*```(?:[\w]*)\n(.*?)```"
-matches = re.finditer(pattern, response, re.DOTALL)
-
-for match in matches:
-    path = match.group(1).strip()
-    content = match.group(2)
+    # --- 4. AIによるコーディング (簡易版) ---
+    # ここにプロンプトを組み立ててコードを生成させるロジックが入ります
+    # 今回はテスト動作のため、コメントのみを返信します
     
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    prompt = f"""
+    You are an AI developer.
+    The user posted an issue: "{issue.title}"
+    Body: "{issue.body}"
     
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
-    
-    modified_files.append(path)
-    print(f"Wrote file: {path}")
+    Please suggest a solution or fix.
+    """
 
-# --- Reporting ---
-if modified_files:
-    report_body = f"""
-## 🤖 AI Auto-Fix Report
-**Status**: Completed
-**Difficulty**: `{difficulty}`
-**Model**: `{worker_model}`
-
-**Modified Files**:
-""" + "\n".join([f"- `{f}`" for f in modified_files])
+    print("🧠 Thinking...")
     
-    issue.create_comment(report_body)
-    print("Report posted to issue.")
-else:
-    print("No changes were applied.")
-    issue.create_comment("🤖 AI Analysis completed but no file changes were detected/parsed.")
+    # モデル選択 (DeepSeek / Claude)
+    model = "anthropic/claude-3.5-sonnet"
+    
+    try:
+        completion = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "You are a helpful AI developer."},
+                {"role": "user", "content": prompt},
+            ]
+        )
+        response_text = completion.choices[0].message.content
+        print("💡 AI Response generated.")
+        
+        # 結果をIssueにコメントバック
+        issue.create_comment(f"🤖 **AI Auto-Dev Report**\n\n{response_text}")
+        print("✅ Comment posted to issue.")
+
+    except Exception as e:
+        print(f"❌ AI Error: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
