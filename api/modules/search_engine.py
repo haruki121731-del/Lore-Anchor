@@ -6,7 +6,7 @@ Includes Mock mode for testing without API consumption
 
 import os
 from typing import List, Dict
-from serpapi import GoogleSearch
+import serpapi
 
 
 def get_mock_results() -> List[Dict[str, str]]:
@@ -49,20 +49,20 @@ def reverse_image_search(image_path: str, api_key: str = None) -> List[Dict[str,
         return get_mock_results()
 
     try:
-        # Real API call
+        # Real API call using new serpapi Client
+        client = serpapi.Client(api_key=api_key)
+
         params = {
             "engine": "google_lens",
-            "url": image_path if image_path.startswith("http") else None,
-            "api_key": api_key
         }
 
-        # If local file, use image parameter instead
+        # If local file, use image parameter; otherwise use url
         if not image_path.startswith("http"):
             params["image"] = image_path
-            del params["url"]
+        else:
+            params["url"] = image_path
 
-        search = GoogleSearch(params)
-        results = search.get_dict()
+        results = client.search(params)
 
         # Parse visual matches from Google Lens results
         visual_matches = results.get("visual_matches", [])

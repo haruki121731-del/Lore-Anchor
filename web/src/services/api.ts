@@ -1,4 +1,4 @@
-import { SearchResult, WhitelistItem } from '@/types';
+import type { SearchResult, WhitelistItem } from '@/types';
 
 const API_BASE = 'http://localhost:8000';
 
