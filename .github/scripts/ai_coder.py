@@ -47,7 +47,6 @@ print("Running Phase 1: Complexity Analysis...")
 manager_system = "You are a Lead Engineer. Analyze the issue and determine if the fix is 'simple' (minor text/logic fix) or 'complex' (refactoring, multiple files). Output ONLY 'simple' or 'complex'."
 manager_user = f"Issue Title: {issue.title}\n\nIssue Body: {issue.body}"
 
-# Manager uses deepseek-chat
 difficulty = ai_chat("deepseek/deepseek-chat", manager_system, manager_user).strip().lower()
 if "complex" not in difficulty:
     difficulty = "simple"
@@ -58,7 +57,6 @@ print(f"Detected Difficulty: {difficulty}")
 
 # --- Phase 2: Worker ---
 print("Running Phase 2: Code Generation...")
-# FIX: Use "anthropic/claude-3.5-sonnet" instead of "claude-3-5-sonnet-20240620"
 worker_model = "deepseek/deepseek-chat" if difficulty == "simple" else "anthropic/claude-3.5-sonnet"
 file_structure = get_file_structure()
 
