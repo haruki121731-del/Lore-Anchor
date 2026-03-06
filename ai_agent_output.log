@@ -1,0 +1,23 @@
+🔍 Starting AI Coder...
+Python version: 3.11.14 (main, Oct 10 2025, 01:03:14) [GCC 13.3.0]
+📦 Importing github module...
+✅ github module imported
+📦 Importing openai module...
+✅ openai module imported
+🔍 Reading environment variables...
+   GITHUB_REPOSITORY: haruki121731-del/Lore-Anchor
+   ISSUE_NUMBER: 0
+   GITHUB_TOKEN present: True
+   OPENROUTER_API_KEY present: True
+🤖 Starting AI Agent for: haruki121731-del/Lore-Anchor (Issue #0)
+   🆓 Using FREE models only
+🔌 Connecting to GitHub...
+✅ Connected to repository: haruki121731-del/Lore-Anchor
+⚖️  Task category: standard
+🧠 Trying free models...
+   Trying model: stepfun/step-3.5-flash:free
+   ✅ Success with: stepfun/step-3.5-flash:free
+✅ AI response received from: stepfun/step-3.5-flash:free
+   Response length: 1000 chars
+ℹ️ No file changes detected in AI response.
+✅ AI Agent completed successfully
