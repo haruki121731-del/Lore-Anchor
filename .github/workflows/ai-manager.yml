@@ -15,16 +15,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          pip install openai PyGithub
+          pip install --upgrade pip
+          pip install openai>=1.0.0 PyGithub>=2.0.0
 
       - name: Create Branch
         env:
@@ -42,28 +43,34 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number || '0' }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: python .github/scripts/ai_coder.py
+        run: |
+          python -u .github/scripts/ai_coder.py
+        continue-on-error: false
 
       - name: Check for changes
         id: git-check
         run: |
           git add .
-          git diff --staged --quiet || echo "changes=true" >> $GITHUB_OUTPUT
+          if git diff --staged --quiet; then
+            echo "changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected"
+          else
+            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected"
+          fi
 
       - name: Commit and Push
         if: steps.git-check.outputs.changes == 'true'
         run: |
-          git commit -m "🤖 AI Auto-fix"
+          git commit -m "🤖 AI Auto-fix for Issue #${{ github.event.issue.number || 'manual' }}"
           git push origin ${{ env.HEAD_BRANCH }}
 
       - name: Create Pull Request
         if: steps.git-check.outputs.changes == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUM: ${{ github.event.issue.number || '0' }}
         run: |
-          gh pr create --title "🤖 AI Fix for Issue #${ISSUE_NUM}" \
+          gh pr create --title "🤖 AI Fix for Issue #${{ github.event.issue.number || 'manual' }}" \
                        --body "AIによる自動修正" \
                        --head ${{ env.HEAD_BRANCH }} \
-                       --base main
-#test
+                       --base main || echo "PR may already exist"
