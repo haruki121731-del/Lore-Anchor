@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AI Auto Developer - OpenRouter + GitHub Integration
+AI Auto Developer - OpenRouter + GitHub Integration (Free Models)
 """
 import os
 import sys
@@ -33,25 +33,47 @@ except ImportError as e:
     subprocess.run([sys.executable, "-m", "pip", "install", "openai", "-q"])
     from openai import OpenAI
 
-# --- 設定: モデル定義 ---
-MODEL_MANAGER = "anthropic/claude-3.5-sonnet"  # 難しいタスク用
-MODEL_WORKER = "deepseek/deepseek-chat"      # 簡単なタスク用
+# --- 設定: 無料モデル定義 ---
+# OpenRouterの無料モデル一覧: https://openrouter.ai/models?max_price=0
+FREE_MODELS = {
+    "gemini": "google/gemini-2.0-flash-exp:free",
+    "llama": "meta-llama/llama-3.3-70b-instruct:free",
+    "qwen": "qwen/qwen-2.5-72b-instruct:free",
+    "deepseek": "deepseek/deepseek-chat:free",  # 利用可能な場合
+    "mistral": "mistralai/mistral-7b-instruct:free",
+}
+
+# デフォルトモデル
+DEFAULT_MODEL = FREE_MODELS["gemini"]
 
 
 def decide_model(title, body):
-    """Issueの内容から担当モデルを決定"""
+    """Issueの内容から担当モデルを決定（無料モデルのみ）"""
     text = (title or "") + " " + (body or "")
     text = text.lower()
 
-    manager_keywords = ['design', 'architect', 'plan', 'complex', 'new feature', '設計', '新規', '複雑']
-    if any(k in text for k in manager_keywords):
-        return MODEL_MANAGER, "Manager (Claude 3.5 Sonnet)"
-    if "claude" in text:
-        return MODEL_MANAGER, "User Requested (Claude)"
-    if "deepseek" in text:
-        return MODEL_WORKER, "User Requested (DeepSeek)"
+    # 複雑なタスクは Gemini Flash（高性能無料モデル）
+    complex_keywords = ['design', 'architect', 'plan', 'complex', 'new feature', 
+                        '設計', '新規', '複雑', 'refactor', 'architecture']
+    if any(k in text for k in complex_keywords):
+        return FREE_MODELS["gemini"], "Manager (Gemini 2.0 Flash Free)"
+    
+    # コード生成タスクは Llama 70B
+    if any(k in text for k in ['implement', 'create', 'add feature', '開発', '実装']):
+        return FREE_MODELS["llama"], "Coder (Llama 3.3 70B Free)"
+    
+    # ユーザーの明示的な指定
+    if "gemini" in text:
+        return FREE_MODELS["gemini"], "User Requested (Gemini)"
+    if "llama" in text:
+        return FREE_MODELS["llama"], "User Requested (Llama)"
+    if "qwen" in text:
+        return FREE_MODELS["qwen"], "User Requested (Qwen)"
+    if "mistral" in text:
+        return FREE_MODELS["mistral"], "User Requested (Mistral)"
 
-    return MODEL_WORKER, "Worker (DeepSeek V3)"
+    # デフォルトは Gemini Flash
+    return FREE_MODELS["gemini"], "Worker (Gemini 2.0 Flash Free)"
 
 
 def apply_file_changes(response_text):
@@ -122,6 +144,7 @@ def main():
             sys.exit(1)
 
         print(f"🤖 Starting AI Agent for: {repo_name} (Issue #{issue_number})", flush=True)
+        print(f"   🆓 Using FREE models only", flush=True)
 
         # --- 2. GitHubクライアントの初期化 ---
         try:
@@ -169,6 +192,7 @@ file_content_here
 - You can output multiple files in one response.
 - If no code changes are needed, just provide advice without the FILENAME blocks.
 - Be careful with file paths - they should be relative to the repository root.
+- Write clean, maintainable code with appropriate comments.
 """
 
         user_prompt = f"""Task: "{issue_title}"
@@ -194,7 +218,7 @@ If this is a feature, implement it with clean, maintainable code.
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-                timeout=120
+                timeout=180  # 無料モデルは応答に時間がかかる場合がある
             )
             response_text = completion.choices[0].message.content
             print("✅ AI response received", flush=True)
