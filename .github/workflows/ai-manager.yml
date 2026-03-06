@@ -28,6 +28,7 @@ jobs:
           pip install openai>=1.0.0 PyGithub>=2.0.0
 
       - name: Create Branch
+        id: create-branch
         env:
           ISSUE_NUM: ${{ github.event.issue.number || 'manual' }}
         run: |
@@ -36,6 +37,7 @@ jobs:
           BRANCH_NAME="feature/issue-${ISSUE_NUM}-auto-dev-$(date +%s)"
           git checkout -b $BRANCH_NAME
           echo "HEAD_BRANCH=$BRANCH_NAME" >> $GITHUB_ENV
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
           echo "Created branch: $BRANCH_NAME"
 
       - name: Run AI Agent
@@ -46,10 +48,23 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number || '0' }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PYTHONUNBUFFERED: "1"
-        run: python -u .github/scripts/ai_coder.py
+        run: |
+          python -u .github/scripts/ai_coder.py 2>&1 | tee ai_agent_output.log
+          exit_code=${PIPESTATUS[0]}
+          echo "AI_AGENT_EXIT_CODE=$exit_code" >> $GITHUB_ENV
+          exit $exit_code
+
+      - name: Upload AI Agent Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-agent-logs
+          path: ai_agent_output.log
+          retention-days: 1
 
       - name: Check for changes
         id: git-check
+        if: success()
         run: |
           git add -A
           if git diff --staged --quiet; then
