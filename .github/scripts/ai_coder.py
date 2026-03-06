@@ -6,8 +6,32 @@ import os
 import sys
 import re
 import traceback
-from github import Github, Auth
-from openai import OpenAI
+
+print("🔍 Starting AI Coder...", flush=True)
+print(f"Python version: {sys.version}", flush=True)
+
+# インポートエラーの詳細な追跡
+try:
+    print("📦 Importing github module...", flush=True)
+    from github import Github, Auth
+    print("✅ github module imported", flush=True)
+except ImportError as e:
+    print(f"❌ Failed to import github: {e}", flush=True)
+    print("Installing PyGithub...", flush=True)
+    import subprocess
+    subprocess.run([sys.executable, "-m", "pip", "install", "PyGithub", "-q"])
+    from github import Github, Auth
+
+try:
+    print("📦 Importing openai module...", flush=True)
+    from openai import OpenAI
+    print("✅ openai module imported", flush=True)
+except ImportError as e:
+    print(f"❌ Failed to import openai: {e}", flush=True)
+    print("Installing openai...", flush=True)
+    import subprocess
+    subprocess.run([sys.executable, "-m", "pip", "install", "openai", "-q"])
+    from openai import OpenAI
 
 # --- 設定: モデル定義 ---
 MODEL_MANAGER = "anthropic/claude-3.5-sonnet"  # 難しいタスク用
@@ -33,11 +57,6 @@ def decide_model(title, body):
 def apply_file_changes(response_text):
     """
     AIのレスポンスからファイル書き込みブロックを抽出して適用する
-    フォーマット:
-    FILENAME: path/to/file.ext
-    ```ext
-    content
-    ```
     """
     # 正規表現: FILENAME: <path> の後にコードブロックが続くパターンを抽出
     pattern = r"FILENAME:\s*([^\n]+)\n```[a-zA-Z0-9]*\n(.*?)```"
@@ -46,17 +65,17 @@ def apply_file_changes(response_text):
     modified_files = []
 
     if not matches:
-        print("ℹ️ No file changes detected in AI response.")
+        print("ℹ️ No file changes detected in AI response.", flush=True)
         return []
 
-    print(f"⚡ Applying {len(matches)} file changes...")
+    print(f"⚡ Applying {len(matches)} file changes...", flush=True)
 
     for file_path, content in matches:
         file_path = file_path.strip()
 
         # セキュリティ対策: 親ディレクトリへの脱出防止
         if '..' in file_path or file_path.startswith('/'):
-            print(f"  ⚠️ Skipped (security): {file_path}")
+            print(f"  ⚠️ Skipped (security): {file_path}", flush=True)
             continue
 
         # ディレクトリがなければ作成
@@ -68,7 +87,7 @@ def apply_file_changes(response_text):
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
 
-        print(f"  📝 Wrote to: {file_path}")
+        print(f"  📝 Wrote to: {file_path}", flush=True)
         modified_files.append(file_path)
 
     return modified_files
@@ -77,58 +96,64 @@ def apply_file_changes(response_text):
 def main():
     try:
         # --- 1. 環境変数の取得 ---
+        print("🔍 Reading environment variables...", flush=True)
+        
         token = os.getenv("GITHUB_TOKEN")
         router_key = os.getenv("OPENROUTER_API_KEY")
         repo_name = os.getenv("GITHUB_REPOSITORY")
         issue_number = os.getenv("ISSUE_NUMBER", "0")
 
-        print(f"🔍 Debug: repo_name={repo_name}, issue_number={issue_number}")
-        print(f"🔍 Debug: GITHUB_TOKEN present={bool(token)}, OPENROUTER_API_KEY present={bool(router_key)}")
+        print(f"   GITHUB_REPOSITORY: {repo_name}", flush=True)
+        print(f"   ISSUE_NUMBER: {issue_number}", flush=True)
+        print(f"   GITHUB_TOKEN present: {bool(token)}", flush=True)
+        print(f"   OPENROUTER_API_KEY present: {bool(router_key)}", flush=True)
 
         if not token:
-            print("❌ Error: GITHUB_TOKEN environment variable is missing")
+            print("❌ Error: GITHUB_TOKEN environment variable is missing", flush=True)
             sys.exit(1)
 
         if not router_key:
-            print("❌ Error: OPENROUTER_API_KEY environment variable is missing")
-            print("   Please set the OPENROUTER_API_KEY secret in your repository settings")
+            print("❌ Error: OPENROUTER_API_KEY environment variable is missing", flush=True)
+            print("   Please set the OPENROUTER_API_KEY secret in your repository settings", flush=True)
             sys.exit(1)
 
         if not repo_name:
-            print("❌ Error: GITHUB_REPOSITORY environment variable is missing")
+            print("❌ Error: GITHUB_REPOSITORY environment variable is missing", flush=True)
             sys.exit(1)
 
-        print(f"🤖 Starting AI Agent for: {repo_name} (Issue #{issue_number})")
+        print(f"🤖 Starting AI Agent for: {repo_name} (Issue #{issue_number})", flush=True)
 
         # --- 2. GitHubクライアントの初期化 ---
         try:
+            print("🔌 Connecting to GitHub...", flush=True)
             auth = Auth.Token(token)
             gh = Github(auth=auth)
             repo = gh.get_repo(repo_name)
-            print(f"✅ Connected to repository: {repo.full_name}")
+            print(f"✅ Connected to repository: {repo.full_name}", flush=True)
         except Exception as e:
-            print(f"❌ Error connecting to GitHub: {e}")
+            print(f"❌ Error connecting to GitHub: {e}", flush=True)
             traceback.print_exc()
             sys.exit(1)
 
         # --- 3. Issueの取得 ---
         issue = None
         issue_title = "Manual Update"
-        issue_body = "Update code."
+        issue_body = "Update code to improve functionality and fix bugs."
 
         if issue_number and issue_number != '0':
             try:
+                print(f"🔍 Fetching issue #{issue_number}...", flush=True)
                 issue = repo.get_issue(number=int(issue_number))
                 issue_title = issue.title or "No title"
                 issue_body = issue.body or "No description"
-                print(f"✅ Found issue: #{issue_number} - {issue_title}")
+                print(f"✅ Found issue: #{issue_number} - {issue_title}", flush=True)
             except Exception as e:
-                print(f"⚠️ Warning: Could not get issue #{issue_number}: {e}")
-                print("   Continuing with default task...")
+                print(f"⚠️ Warning: Could not get issue #{issue_number}: {e}", flush=True)
+                print("   Continuing with default task...", flush=True)
 
         # --- 4. 担当モデルの選定 ---
         selected_model, role_name = decide_model(issue_title, issue_body)
-        print(f"⚖️  Judgment: Task assigned to **{role_name}**")
+        print(f"⚖️  Judgment: Task assigned to **{role_name}**", flush=True)
 
         # --- 5. プロンプト作成 ---
         system_prompt = """You are an expert AI developer capable of reading and writing code.
@@ -140,7 +165,7 @@ FILENAME: path/to/filename.ext
 file_content_here
 ```
 
-- Provide the FULL content of the file (do not use placeholders like // ... existing code ...).
+- Provide the FULL content of the file (do not use placeholders).
 - You can output multiple files in one response.
 - If no code changes are needed, just provide advice without the FILENAME blocks.
 - Be careful with file paths - they should be relative to the repository root.
@@ -154,14 +179,15 @@ If this is a feature, implement it with clean, maintainable code.
 """
 
         # --- 6. AI実行 ---
-        client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=router_key,
-        )
-
-        print(f"🧠 {role_name} is thinking...")
-
+        print(f"🧠 {role_name} is thinking...", flush=True)
+        print(f"   Using model: {selected_model}", flush=True)
+        
         try:
+            client = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=router_key,
+            )
+            
             completion = client.chat.completions.create(
                 model=selected_model,
                 messages=[
@@ -171,12 +197,16 @@ If this is a feature, implement it with clean, maintainable code.
                 timeout=120
             )
             response_text = completion.choices[0].message.content
-            print("✅ AI response received")
+            print("✅ AI response received", flush=True)
+            print(f"   Response length: {len(response_text)} chars", flush=True)
         except Exception as e:
-            print(f"❌ Error calling OpenRouter API: {e}")
+            print(f"❌ Error calling OpenRouter API: {e}", flush=True)
             traceback.print_exc()
             if issue:
-                issue.create_comment(f"❌ **AI Error**: Failed to get response from {selected_model}\n\nError: {str(e)}")
+                try:
+                    issue.create_comment(f"❌ **AI Error**: Failed to get response from {selected_model}\n\nError: {str(e)}")
+                except:
+                    pass
             sys.exit(1)
 
         # --- 7. コードの適用 ---
@@ -194,7 +224,6 @@ If this is a feature, implement it with clean, maintainable code.
             else:
                 comment += "### ℹ️ No code changes detected\n\n"
                 comment += "**AI Response:**\n\n"
-                # Truncate long responses
                 if len(response_text) > 2000:
                     comment += response_text[:2000] + "\n\n... (truncated)"
                 else:
@@ -202,14 +231,14 @@ If this is a feature, implement it with clean, maintainable code.
 
             try:
                 issue.create_comment(comment)
-                print("✅ Comment posted to issue")
+                print("✅ Comment posted to issue", flush=True)
             except Exception as e:
-                print(f"⚠️ Warning: Could not post comment: {e}")
+                print(f"⚠️ Warning: Could not post comment: {e}", flush=True)
 
-        print("✅ AI Agent completed successfully")
+        print("✅ AI Agent completed successfully", flush=True)
 
     except Exception as e:
-        print(f"❌ Unexpected error: {e}")
+        print(f"❌ Unexpected error: {e}", flush=True)
         traceback.print_exc()
         sys.exit(1)
 
