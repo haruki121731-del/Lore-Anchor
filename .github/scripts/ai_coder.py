@@ -36,12 +36,14 @@ except ImportError as e:
 # --- 設定: 無料モデル定義 ---
 # OpenRouterの無料モデル（2025年3月時点で利用可能）
 FREE_MODELS = [
-    "deepseek/deepseek-chat-v3-0324:free",
-    "meta-llama/llama-4-maverick:free", 
-    "google/gemma-3-27b-it:free",
-    "mistralai/mistral-small-3.1-24b-instruct:free",
-    "nvidia/llama-3.1-nemotron-nano-8b-v1:free",
-    "qwen/qwen-2.5-72b-instruct:free",
+    "stepfun/step-3.5-flash:free",                           # StepFun Step 3.5 Flash
+    "mistralai/mistral-small-3.1-24b-instruct:free",         # Mistral Small 3.1
+    "openai/gpt-oss-20b:free",                               # OpenAI GPT-OSS 20B
+    "nvidia/nemotron-3-nano-30b-a3b:free",                   # NVIDIA Nemotron 3 Nano
+    "qwen/qwen3-coder:free",                                 # Qwen3 Coder
+    "arcee-ai/trinity-large-preview:free",                   # Arcee AI Trinity
+    "google/gemma-3-12b-it:free",                            # Google Gemma 3 12B
+    "liquid/lfm-2.5-1.2b-instruct:free",                     # Liquid AI LFM
 ]
 
 # デフォルトモデル
