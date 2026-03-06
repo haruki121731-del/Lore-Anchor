@@ -34,53 +34,66 @@ except ImportError as e:
     from openai import OpenAI
 
 # --- 設定: 無料モデル定義 ---
-# OpenRouterの無料モデル一覧: https://openrouter.ai/models?max_price=0
-FREE_MODELS = {
-    "gemini": "google/gemini-2.0-flash-exp:free",
-    "llama": "meta-llama/llama-3.3-70b-instruct:free",
-    "qwen": "qwen/qwen-2.5-72b-instruct:free",
-    "deepseek": "deepseek/deepseek-chat:free",  # 利用可能な場合
-    "mistral": "mistralai/mistral-7b-instruct:free",
-}
+# OpenRouterの無料モデル（2025年3月時点で利用可能）
+FREE_MODELS = [
+    "deepseek/deepseek-chat-v3-0324:free",
+    "meta-llama/llama-4-maverick:free", 
+    "google/gemma-3-27b-it:free",
+    "mistralai/mistral-small-3.1-24b-instruct:free",
+    "nvidia/llama-3.1-nemotron-nano-8b-v1:free",
+    "qwen/qwen-2.5-72b-instruct:free",
+]
 
 # デフォルトモデル
-DEFAULT_MODEL = FREE_MODELS["gemini"]
+DEFAULT_MODEL = FREE_MODELS[0]
 
 
-def decide_model(title, body):
-    """Issueの内容から担当モデルを決定（無料モデルのみ）"""
+def try_create_completion(client, models, messages, timeout=180):
+    """
+    モデルリストを順番に試して、利用可能なモデルでAPIコールを実行
+    """
+    for model in models:
+        try:
+            print(f"   Trying model: {model}", flush=True)
+            completion = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                timeout=timeout
+            )
+            print(f"   ✅ Success with: {model}", flush=True)
+            return completion, model
+        except Exception as e:
+            error_msg = str(e)
+            if "404" in error_msg or "not found" in error_msg.lower():
+                print(f"   ⚠️ Model not available: {model}", flush=True)
+                continue
+            elif "402" in error_msg or "credits" in error_msg.lower():
+                print(f"   ⚠️ Insufficient credits for: {model}", flush=True)
+                continue
+            else:
+                print(f"   ⚠️ Error with {model}: {error_msg[:100]}", flush=True)
+                continue
+    
+    return None, None
+
+
+def decide_model_category(title, body):
+    """Issueの内容からモデルカテゴリを決定"""
     text = (title or "") + " " + (body or "")
     text = text.lower()
 
-    # 複雑なタスクは Gemini Flash（高性能無料モデル）
     complex_keywords = ['design', 'architect', 'plan', 'complex', 'new feature', 
                         '設計', '新規', '複雑', 'refactor', 'architecture']
     if any(k in text for k in complex_keywords):
-        return FREE_MODELS["gemini"], "Manager (Gemini 2.0 Flash Free)"
+        return "complex"
     
-    # コード生成タスクは Llama 70B
-    if any(k in text for k in ['implement', 'create', 'add feature', '開発', '実装']):
-        return FREE_MODELS["llama"], "Coder (Llama 3.3 70B Free)"
-    
-    # ユーザーの明示的な指定
-    if "gemini" in text:
-        return FREE_MODELS["gemini"], "User Requested (Gemini)"
-    if "llama" in text:
-        return FREE_MODELS["llama"], "User Requested (Llama)"
-    if "qwen" in text:
-        return FREE_MODELS["qwen"], "User Requested (Qwen)"
-    if "mistral" in text:
-        return FREE_MODELS["mistral"], "User Requested (Mistral)"
-
-    # デフォルトは Gemini Flash
-    return FREE_MODELS["gemini"], "Worker (Gemini 2.0 Flash Free)"
+    return "standard"
 
 
 def apply_file_changes(response_text):
     """
     AIのレスポンスからファイル書き込みブロックを抽出して適用する
     """
-    # 正規表現: FILENAME: <path> の後にコードブロックが続くパターンを抽出
     pattern = r"FILENAME:\s*([^\n]+)\n```[a-zA-Z0-9]*\n(.*?)```"
     matches = re.findall(pattern, response_text, re.DOTALL)
 
@@ -95,17 +108,15 @@ def apply_file_changes(response_text):
     for file_path, content in matches:
         file_path = file_path.strip()
 
-        # セキュリティ対策: 親ディレクトリへの脱出防止
+        # セキュリティ対策
         if '..' in file_path or file_path.startswith('/'):
             print(f"  ⚠️ Skipped (security): {file_path}", flush=True)
             continue
 
-        # ディレクトリがなければ作成
         dir_path = os.path.dirname(file_path)
         if dir_path:
             os.makedirs(dir_path, exist_ok=True)
 
-        # ファイル書き込み
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
 
@@ -136,7 +147,6 @@ def main():
 
         if not router_key:
             print("❌ Error: OPENROUTER_API_KEY environment variable is missing", flush=True)
-            print("   Please set the OPENROUTER_API_KEY secret in your repository settings", flush=True)
             sys.exit(1)
 
         if not repo_name:
@@ -175,8 +185,8 @@ def main():
                 print("   Continuing with default task...", flush=True)
 
         # --- 4. 担当モデルの選定 ---
-        selected_model, role_name = decide_model(issue_title, issue_body)
-        print(f"⚖️  Judgment: Task assigned to **{role_name}**", flush=True)
+        model_category = decide_model_category(issue_title, issue_body)
+        print(f"⚖️  Task category: {model_category}", flush=True)
 
         # --- 5. プロンプト作成 ---
         system_prompt = """You are an expert AI developer capable of reading and writing code.
@@ -202,36 +212,36 @@ Please implement the solution. If this is a bug fix, explain what was wrong and 
 If this is a feature, implement it with clean, maintainable code.
 """
 
-        # --- 6. AI実行 ---
-        print(f"🧠 {role_name} is thinking...", flush=True)
-        print(f"   Using model: {selected_model}", flush=True)
+        # --- 6. AI実行（複数モデルを試行）---
+        print(f"🧠 Trying free models...", flush=True)
         
-        try:
-            client = OpenAI(
-                base_url="https://openrouter.ai/api/v1",
-                api_key=router_key,
-            )
-            
-            completion = client.chat.completions.create(
-                model=selected_model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                timeout=180  # 無料モデルは応答に時間がかかる場合がある
-            )
-            response_text = completion.choices[0].message.content
-            print("✅ AI response received", flush=True)
-            print(f"   Response length: {len(response_text)} chars", flush=True)
-        except Exception as e:
-            print(f"❌ Error calling OpenRouter API: {e}", flush=True)
-            traceback.print_exc()
+        client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=router_key,
+        )
+        
+        completion, selected_model = try_create_completion(
+            client, 
+            FREE_MODELS, 
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+        )
+        
+        if not completion:
+            error_msg = "All free models failed. Please check your OpenRouter account or try again later."
+            print(f"❌ {error_msg}", flush=True)
             if issue:
                 try:
-                    issue.create_comment(f"❌ **AI Error**: Failed to get response from {selected_model}\n\nError: {str(e)}")
+                    issue.create_comment(f"❌ **AI Error**: {error_msg}\n\nTried models: {', '.join(FREE_MODELS)}")
                 except:
                     pass
             sys.exit(1)
+        
+        response_text = completion.choices[0].message.content
+        print(f"✅ AI response received from: {selected_model}", flush=True)
+        print(f"   Response length: {len(response_text)} chars", flush=True)
 
         # --- 7. コードの適用 ---
         modified_files = apply_file_changes(response_text)
